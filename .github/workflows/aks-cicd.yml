@@ -1,0 +1,38 @@
+name: CI/CD to AKS
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Login to ACR
+        run: |
+          az acr login --name ${{ secrets.ACR_NAME }}
+
+      - name: Build and Push Docker Image
+        run: |
+          IMAGE_NAME=${{ secrets.ACR_NAME }}.azurecr.io/flask-aks-app:latest
+          docker build -t $IMAGE_NAME .
+          docker push $IMAGE_NAME
+
+      - name: Set AKS Context
+        run: |
+          az aks get-credentials --resource-group ${{ secrets.RESOURCE_GROUP }} --name ${{ secrets.CLUSTER_NAME }} --overwrite-existing
+
+      - name: Deploy to AKS
+        run: |
+          kubectl set image deployment/flask-aks-app flask-aks-app=${{ secrets.ACR_NAME }}.azurecr.io/flask-aks-app:latest
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
