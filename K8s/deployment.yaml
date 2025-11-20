@@ -16,4 +16,4 @@ spec:
       - name: flask-eks-app
         image: myacrassignment3.azurecr.io/flask-aks-app:latest
         ports:
-        - containerPort: 5000READ
+        - containerPort: 5000
