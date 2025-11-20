@@ -13,18 +13,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # 2. Login to Azure using Service Principal credentials
+      # 2. Install dependencies and run tests
+      - name: Install dependencies and run tests
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r app/requirements.txt
+          pytest tests/
+
+      # 3. Login to Azure using Service Principal credentials
       - name: Azure Login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # 3. Login to Azure Container Registry (ACR)
+      # 4. Login to Azure Container Registry (ACR)
       - name: Login to ACR
         run: |
           az acr login --name ${{ secrets.ACR_NAME }}
 
-      # 4. Build and Push Docker Image with unique tag
+      # 5. Build and Push Docker Image with unique tag
       - name: Build and Push Docker Image
         id: build
         run: |
@@ -34,17 +42,14 @@ jobs:
           docker build --no-cache -t $IMAGE_NAME .
           docker push $IMAGE_NAME
 
-      # 5. Set AKS Context
+      # 6. Set AKS Context
       - name: Set AKS Context
         run: |
           az aks get-credentials --resource-group ${{ secrets.RESOURCE_GROUP }} --name ${{ secrets.CLUSTER_NAME }} --overwrite-existing
 
-      # 6. Deploy to AKS
+      # 7. Deploy to AKS
       - name: Deploy to AKS
         run: |
-          # Apply manifests first to create deployment and service if missing
           kubectl apply -f K8s/deployment.yaml
           kubectl apply -f K8s/service.yaml
-
-          # Update image in deployment using env variable
           kubectl set image deployment/flask-eks-app flask-eks-app=$IMAGE_NAME
