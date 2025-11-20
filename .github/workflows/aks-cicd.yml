@@ -9,30 +9,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. Checkout the code
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # 2. Login to Azure using Service Principal credentials
       - name: Azure Login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      # 3. Login to Azure Container Registry (ACR)
       - name: Login to ACR
         run: |
           az acr login --name ${{ secrets.ACR_NAME }}
 
+      # 4. Build and Push Docker Image to ACR
       - name: Build and Push Docker Image
         run: |
           IMAGE_NAME=${{ secrets.ACR_NAME }}.azurecr.io/flask-aks-app:latest
           docker build -t $IMAGE_NAME .
           docker push $IMAGE_NAME
 
+      # 5. Set AKS Context
       - name: Set AKS Context
         run: |
           az aks get-credentials --resource-group ${{ secrets.RESOURCE_GROUP }} --name ${{ secrets.CLUSTER_NAME }} --overwrite-existing
 
+      # 6. Deploy to AKS
       - name: Deploy to AKS
         run: |
-          kubectl set image deployment/flask-aks-app flask-aks-app=${{ secrets.ACR_NAME }}.azurecr.io/flask-aks-app:latest
+          # Apply manifests first to create deployment and service if missing
           kubectl apply -f k8s/deployment.yaml
           kubectl apply -f k8s/service.yaml
+
+          # Update image in deployment
+          kubectl set image deployment/flask-eks-app flask-eks-app=${{ secrets.ACR_NAME }}.azurecr.io/flask-aks-app:latest
