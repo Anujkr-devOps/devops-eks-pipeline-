@@ -24,11 +24,12 @@ jobs:
         run: |
           az acr login --name ${{ secrets.ACR_NAME }}
 
-      # 4. Build and Push Docker Image to ACR
+      # 4. Build and Push Docker Image with unique tag
       - name: Build and Push Docker Image
         run: |
-          IMAGE_NAME=${{ secrets.ACR_NAME }}.azurecr.io/flask-aks-app:latest
-          docker build -t $IMAGE_NAME .
+          IMAGE_TAG=${{ github.sha }}
+          IMAGE_NAME=${{ secrets.ACR_NAME }}.azurecr.io/flask-aks-app:$IMAGE_TAG
+          docker build --no-cache -t $IMAGE_NAME .
           docker push $IMAGE_NAME
 
       # 5. Set AKS Context
@@ -43,5 +44,5 @@ jobs:
           kubectl apply -f K8s/deployment.yaml
           kubectl apply -f K8s/service.yaml
 
-          # Update image in deployment
-          kubectl set image deployment/flask-eks-app flask-eks-app=${{ secrets.ACR_NAME }}.azurecr.io/flask-aks-app:latest
+          # Update image in deployment with unique tag
+          kubectl set image deployment/flask-eks-app flask-eks-app=$IMAGE_NAME
