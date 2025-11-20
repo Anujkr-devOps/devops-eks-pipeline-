@@ -26,9 +26,11 @@ jobs:
 
       # 4. Build and Push Docker Image with unique tag
       - name: Build and Push Docker Image
+        id: build
         run: |
           IMAGE_TAG=${{ github.sha }}
           IMAGE_NAME=${{ secrets.ACR_NAME }}.azurecr.io/flask-aks-app:$IMAGE_TAG
+          echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
           docker build --no-cache -t $IMAGE_NAME .
           docker push $IMAGE_NAME
 
@@ -44,5 +46,5 @@ jobs:
           kubectl apply -f K8s/deployment.yaml
           kubectl apply -f K8s/service.yaml
 
-          # Update image in deployment with unique tag
+          # Update image in deployment using env variable
           kubectl set image deployment/flask-eks-app flask-eks-app=$IMAGE_NAME
