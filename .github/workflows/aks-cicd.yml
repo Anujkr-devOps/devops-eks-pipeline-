@@ -40,8 +40,8 @@ jobs:
       - name: Deploy to AKS
         run: |
           # Apply manifests first to create deployment and service if missing
-          kubectl apply -f k8s/deployment.yaml
-          kubectl apply -f k8s/service.yaml
+          kubectl apply -f K8s/deployment.yaml
+          kubectl apply -f K8s/service.yaml
 
           # Update image in deployment
           kubectl set image deployment/flask-eks-app flask-eks-app=${{ secrets.ACR_NAME }}.azurecr.io/flask-aks-app:latest
