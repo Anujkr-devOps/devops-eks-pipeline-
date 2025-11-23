@@ -17,7 +17,7 @@ jobs:
       - name: Run Bandit Security Scan
         run: |
           pip install bandit
-          bandit -r app --severity-level high -ll
+          bandit -r app --severity-level high
 
       # 3. Install dependencies and run tests
       - name: Install dependencies and run tests
