@@ -13,7 +13,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # 2. Install dependencies and run tests
+      # 2. Run Bandit Security Scan
+      - name: Run Bandit Security Scan
+        run: |
+          pip install bandit
+          bandit -r app
+
+      # 3. Install dependencies and run tests
       - name: Install dependencies and run tests
         run: |
           python -m venv venv
@@ -22,25 +28,37 @@ jobs:
           export PYTHONPATH=$PYTHONPATH:$(pwd)/app
           pytest tests/
 
-      # 3. Login to Azure using Service Principal credentials
+      # 4. Login to Azure using Service Principal credentials
       - name: Azure Login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # 4. Login to Azure Container Registry (ACR)
+      # 5. Login to Azure Container Registry (ACR)
       - name: Login to ACR
         run: |
           az acr login --name ${{ secrets.ACR_NAME }}
 
-      # 5. Build and Push Docker Image with unique tag
-      - name: Build and Push Docker Image
+      # 5a. Build Docker Image
+      - name: Build Docker Image
         id: build
         run: |
           IMAGE_TAG=${{ github.sha }}
           IMAGE_NAME=${{ secrets.ACR_NAME }}.azurecr.io/flask-aks-app:$IMAGE_TAG
           echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
           docker build --no-cache -t $IMAGE_NAME .
+
+      # 5b. Run Trivy Scan on Docker Image
+      - name: Run Trivy Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.IMAGE_NAME }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+
+      # 5c. Push Docker Image
+      - name: Push Docker Image
+        run: |
           docker push $IMAGE_NAME
 
       # 6. Set AKS Context
