@@ -13,11 +13,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # 2. Run Bandit Security Scan
+      # 2. Run Bandit Security Scan and upload report
       - name: Run Bandit Security Scan
         run: |
           pip install bandit
-          bandit -r app --severity-level high
+          bandit -r app --severity-level high -f json -o bandit-report.json
+
+      - name: Upload Bandit Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: bandit-report
+          path: bandit-report.json
 
       # 3. Install dependencies and run tests
       - name: Install dependencies and run tests
@@ -39,7 +45,7 @@ jobs:
         run: |
           az acr login --name ${{ secrets.ACR_NAME }}
 
-      # 5a. Build Docker Image
+      # 6a. Build Docker Image
       - name: Build Docker Image
         id: build
         run: |
@@ -48,25 +54,33 @@ jobs:
           echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
           docker build --no-cache -t $IMAGE_NAME .
 
-      # 5b. Run Trivy Scan on Docker Image
+      # 6b. Run Trivy Scan and upload report
       - name: Run Trivy Scan
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.IMAGE_NAME }}
           severity: HIGH,CRITICAL
           ignore-unfixed: true
+          format: json
+          output: trivy-report.json
 
-      # 5c. Push Docker Image
+      - name: Upload Trivy Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: trivy-report
+          path: trivy-report.json
+
+      # 6c. Push Docker Image
       - name: Push Docker Image
         run: |
           docker push $IMAGE_NAME
 
-      # 6. Set AKS Context
+      # 7. Set AKS Context
       - name: Set AKS Context
         run: |
           az aks get-credentials --resource-group ${{ secrets.RESOURCE_GROUP }} --name ${{ secrets.CLUSTER_NAME }} --overwrite-existing
 
-      # 7. Deploy to AKS
+      # 8. Deploy to AKS
       - name: Deploy to AKS
         run: |
           kubectl apply -f K8s/deployment.yaml
